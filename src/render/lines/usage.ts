@@ -285,8 +285,24 @@ function formatElapsedWindow(resetAt: Date | null, windowMs: number): string {
     return '';
   }
 
+  // Elapsed wall-clock time within the window, rendered as "elapsed / span"
+  // e.g. "1h 30m / 5h". Time-based, independent of the token-usage percent.
   const windowStart = resetAt.getTime() - windowMs;
-  const rawElapsed = ((Date.now() - windowStart) / windowMs) * 100;
-  const elapsed = Math.max(0, Math.min(100, Math.round(rawElapsed)));
-  return `${elapsed}% elapsed`;
+  const elapsedMs = Math.max(0, Date.now() - windowStart);
+  return `${formatDuration(elapsedMs)} / ${formatDuration(windowMs)}`;
+}
+
+function formatDuration(ms: number): string {
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) {
+    return `${mins}m`;
+  }
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+  }
+  return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
 }

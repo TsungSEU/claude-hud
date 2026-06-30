@@ -1,0 +1,5 @@
+{
+  "apiKey": "PASTE_YOUR_GLM_API_KEY",
+  "intervalSec": 300,
+  "snapshotPath": ""
+}
