@@ -188,7 +188,7 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `display.usageBarEnabled` | boolean | true | Display usage as visual bar instead of text |
 | `display.usageCompact` | boolean | false | Display usage in a shorter text form such as `5h: 25% (1h 30m)`; takes precedence over `display.usageBarEnabled` |
 | `display.showResetLabel` | boolean | true | Show the `resets in` prefix before usage countdowns |
-| `display.timeFormat` | `relative` \| `absolute` \| `both` \| `elapsed` \| `elapsedAndAbsolute` | `relative` | How usage-window time is shown: countdown only (`resets in 2h 30m`), wall-clock reset (`resets at 14:30`), both, elapsed window percentage (`53% elapsed`), or elapsed plus wall-clock reset |
+| `display.timeFormat` | `relative` \| `absolute` \| `both` \| `elapsed` \| `elapsedAndAbsolute` | `relative` | How usage-window time is shown: countdown only (`resets in 2h 30m`), wall-clock reset (`resets at 14:30`), both, elapsed window span (`1h 30m / 5h`), or elapsed plus wall-clock reset |
 | `display.sevenDayThreshold` | 0-100 | 80 | Show 7-day usage when >= threshold (0 = always) |
 | `display.externalUsagePath` | string | `""` | Optional absolute path to a local usage snapshot file. Relative paths are ignored. When stdin `rate_limits` are present, only `balance_label` is appended; when they are missing, valid usage windows can be used as a fallback |
 | `display.externalUsageWritePath` | string | `""` | Optional absolute `.json` path in an existing directory. When stdin `rate_limits` exists, ClaudeHUD writes a private snapshot for other local tools. Relative paths, non-json files, and missing parent directories are ignored |
@@ -390,6 +390,133 @@ Leaving it unset (or setting an explicit negative: `0`, `false`, `off`, `no`) ke
 - Restart Claude Code so it picks up the new statusLine config
 - On macOS, fully quit Claude Code and run `claude` again in your terminal
 - Make sure `CLAUDE_HUD_DISABLE` is not set in your environment (e.g. exported from a shell profile) — it silences the HUD entirely, including setup verification
+
+---
+
+## GLM / BigModel Usage Bridge
+
+When you run Claude Code through a GLM (Zhipu AI / BigModel) proxy such as `glm-5.2`, the proxy does not emit Anthropic-style `rate_limits` on the statusline stdin, so the Usage line stays empty. The bundled `glm/` module bridges this gap: a standalone poller queries the BigModel quota API on a timer and writes a local usage snapshot that Claude HUD reads.
+
+**Architecture:** the poller is a separate, long-lived process; the HUD's statusline process stays local-only (it only reads the snapshot, never makes network calls). The poller uses only Node 18+ built-ins (`fs` / `os` / global `fetch`) — zero npm dependencies.
+
+### Install Claude HUD from this fork
+
+```
+/plugin marketplace add TsungSEU/claude-hud
+/plugin install claude-hud
+```
+
+### Configure the API key (any one; highest priority first)
+
+- `GLM_API_KEY` env var, **or**
+- `apiKey` in `glm/config.json` (copy from `glm/config.example.json`), **or**
+- auto-detected from `~/.claude/settings.json` `env` when `ANTHROPIC_BASE_URL` points at `bigmodel` (reuses `ANTHROPIC_AUTH_TOKEN`)
+
+### Run the poller
+
+```bash
+npm run glm:poll        # loop, every 5 min by default
+npm run glm:poll:once   # single fetch, for verifying the key
+```
+
+### Point the HUD at the snapshot
+
+In `~/.claude/plugins/claude-hud/config.json`:
+
+```json
+{
+  "display": {
+    "externalUsagePath": "/absolute/path/to/glm-usage-snapshot.json",
+    "timeFormat": "elapsed"
+  }
+}
+```
+
+`timeFormat: "elapsed"` renders the trailing time as elapsed / window span, e.g. `(1h 30m / 5h)`. With the poller running you get:
+
+```
+Usage ██░░░░░░░░ 25% (1h 30m / 5h)
+```
+
+### Run as a system service (boot start + crash auto-restart)
+
+The loop mode is a daemon and must be re-launched after a reboot. Replace `NODE` (e.g. `/usr/bin/node`, `/opt/homebrew/bin/node`) and `POLLER` (absolute path to `glm/poller.mjs`) for your install.
+
+**Linux (systemd user unit)** — `~/.config/systemd/user/glm-poller.service`:
+
+```ini
+[Unit]
+Description=GLM quota -> claude-hud bridge poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=NODE POLLER
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now glm-poller
+loginctl enable-linger $USER        # keep running after logout
+```
+
+`Restart=always` restarts on any exit (crash/kill); `StartLimitBurst` caps attempts to avoid loops.
+
+**macOS (launchd)** — `~/Library/LaunchAgents/com.glm.poller.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.glm.poller</string>
+  <key>ProgramArguments</key>
+  <array><string>NODE</string><string>POLLER</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardErrorPath</key><string>/tmp/glm-poller.err.log</string>
+</dict>
+</plist>
+```
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.glm.poller.plist
+```
+
+`KeepAlive=true` relaunches on crash.
+
+**Windows** — [NSSM](https://nssm.cc/) (service + auto-restart):
+
+```cmd
+nssm install glm-poller "C:\Program Files\nodejs\node.exe" "C:\path\to\glm\poller.mjs"
+nssm set glm-poller AppStdout "C:\Users\YOU\glm-poller.log"
+nssm set glm-poller AppStderr "C:\Users\YOU\glm-poller.log"
+nssm start glm-poller
+```
+
+Or Task Scheduler: trigger = at logon, action = start `node POLLER`, settings = restart on failure.
+
+### Troubleshooting
+
+If the Usage line is missing:
+1. Is the poller running? (`systemctl --user status glm-poller` / `launchctl list | grep glm` / `sc query glm-poller`)
+2. Is the snapshot fresh? `updated_at` must be within `externalUsageFreshnessMs` (default 5 min); stale snapshots are hidden.
+3. Is `externalUsagePath` an absolute path? (Windows backslashes must be escaped.)
+4. If a Claude subscriber `rate_limits` is present, it takes precedence and the external snapshot is not shown.
+
+On poller error the old snapshot is preserved (failure-tolerant); the next cycle recovers automatically.
+
+### Security
+
+`glm/config.json` is git-ignored. The poller sends the full key in the `Authorization` header (no `Bearer` prefix — BigModel convention) only to `https://open.bigmodel.cn`. The snapshot is written atomically with `0o600` permissions and contains only percentages and reset timestamps — never the key.
 
 ---
 
