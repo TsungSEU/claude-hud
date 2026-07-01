@@ -2,8 +2,8 @@
 
 一个 Claude Code 插件，实时显示正在发生的事情——上下文使用率、活跃工具、运行中的 Agent 和待办进度。始终在你的输入下方可见。
 
-[![License](https://img.shields.io/github/license/TsungSEU/claude-hud?v=2)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/TsungSEU/claude-hud)](https://github.com/TsungSEU/claude-hud/stargazers)
+[![License](https://img.shields.io/github/license/tsungseu/claude-hud?v=2)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/tsungseu/claude-hud)](https://github.com/tsungseu/claude-hud/stargazers)
 
 ![Claude HUD in action](claude-hud-preview-5-2.png)
 
@@ -15,7 +15,7 @@
 
 **步骤 1：添加市场**
 ```
-/plugin marketplace add TsungSEU/claude-hud
+/plugin marketplace add tsungseu/claude-hud
 ```
 
 **步骤 2：安装插件**
@@ -379,7 +379,7 @@ CLAUDE_HUD_DISABLE=1 claude
 ### 从本 fork 安装 Claude HUD
 
 ```
-/plugin marketplace add TsungSEU/claude-hud
+/plugin marketplace add tsungseu/claude-hud
 /plugin install claude-hud
 ```
 
@@ -599,7 +599,7 @@ npm run kimi:poll:once   # 单次
 ## 开发
 
 ```bash
-git clone https://github.com/TsungSEU/claude-hud
+git clone https://github.com/tsungseu/claude-hud
 cd claude-hud
 npm ci && npm run build
 npm test
@@ -617,4 +617,4 @@ MIT — 详见 [LICENSE](LICENSE)
 
 ## Star 历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=TsungSEU/claude-hud&type=Date)](https://star-history.com/#TsungSEU/claude-hud&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=tsungseu/claude-hud&type=Date)](https://star-history.com/#tsungseu/claude-hud&Date)

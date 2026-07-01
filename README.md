@@ -2,8 +2,8 @@
 
 A Claude Code plugin that shows what's happening — context usage, active tools, running agents, and todo progress. Always visible below your input.
 
-[![License](https://img.shields.io/github/license/TsungSEU/claude-hud?v=2)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/TsungSEU/claude-hud)](https://github.com/TsungSEU/claude-hud/stargazers)
+[![License](https://img.shields.io/github/license/tsungseu/claude-hud?v=2)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/tsungseu/claude-hud)](https://github.com/tsungseu/claude-hud/stargazers)
 
 ![Claude HUD in action](claude-hud-preview-5-2.png)
 
@@ -15,7 +15,7 @@ Inside a Claude Code instance, run the following commands:
 
 **Step 1: Add the marketplace**
 ```
-/plugin marketplace add TsungSEU/claude-hud
+/plugin marketplace add tsungseu/claude-hud
 ```
 
 **Step 2: Install the plugin**
@@ -402,7 +402,7 @@ When you run Claude Code through a GLM (Zhipu AI / BigModel) proxy such as `glm-
 ### Install Claude HUD from this fork
 
 ```
-/plugin marketplace add TsungSEU/claude-hud
+/plugin marketplace add tsungseu/claude-hud
 /plugin install claude-hud
 ```
 
@@ -622,7 +622,7 @@ Both auto-start via the `SessionStart` hook (whichever resolves a key daemonizes
 ## Development
 
 ```bash
-git clone https://github.com/TsungSEU/claude-hud
+git clone https://github.com/tsungseu/claude-hud
 cd claude-hud
 npm ci && npm run build
 npm test
@@ -640,4 +640,4 @@ MIT — see [LICENSE](LICENSE)
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=TsungSEU/claude-hud&type=Date)](https://star-history.com/#TsungSEU/claude-hud&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=tsungseu/claude-hud&type=Date)](https://star-history.com/#tsungseu/claude-hud&Date)
