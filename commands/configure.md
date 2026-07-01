@@ -24,9 +24,10 @@ Advanced settings such as `colors.*`, `pathLevels`, `maxWidth`, `forceMaxWidth`,
 `display.autoCompactWindow`, `display.promptCacheTtlSeconds`,
 `display.usageThreshold`, `display.sevenDayThreshold`,
 `display.environmentThreshold`, `display.contextWarningThreshold`,
-`display.contextCriticalThreshold`, `display.advisorOverride`, and the
-`display.externalUsage*` keys are preserved when saving but are not edited by
-this guided flow.
+`display.contextCriticalThreshold`, `display.advisorOverride`,
+`display.externalUsageWritePath`, and `display.externalUsageFreshnessMs` are
+preserved when saving. `display.externalUsagePath` is **auto-managed** — see
+"Auto-detect external usage provider" under Processing Logic.
 
 ---
 
@@ -341,6 +342,17 @@ Set `display.usageValue: "remaining"` manually to show remaining quota percentag
 ---
 
 ## Processing Logic
+
+**Always (both flows) — Auto-detect external usage provider**: read `~/.claude/settings.json` `env.ANTHROPIC_BASE_URL` (lowercased) and set `display.externalUsagePath` to the matching snapshot, so the Usage row tracks whichever provider the user is currently routed through:
+
+| base URL contains | externalUsagePath |
+|---|---|
+| `bigmodel` | `<home>/.claude/glm-usage-snapshot.json` |
+| `minimax` | `<home>/.claude/minimax-usage-snapshot.json` |
+| `aliyun.com` / `alibabacloud` / `bailian` | `<home>/.claude/alibaba-usage-snapshot.json` |
+| `kimi` / `moonshot` | `<home>/.claude/kimi-usage-snapshot.json` |
+
+Resolve `<home>` to the absolute home directory. If nothing matches, leave `externalUsagePath` unchanged.
 
 ### For New Users (Flow A):
 1. Apply chosen preset as base

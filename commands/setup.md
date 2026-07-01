@@ -642,6 +642,26 @@ After successfully writing the config, tell the user:
 2. Copy it back: `cp ~/.claude/settings.json.bak.{timestamp} ~/.claude/settings.json`
 3. Restart Claude Code.
 
+## Step 3.5: Auto-detect External Usage Provider
+
+If the user routes Claude Code through one of the bundled provider bridges (GLM / MiniMax / Alibaba / Kimi), auto-wire the HUD's external usage snapshot so the Usage row works without manual config.
+
+1. Read `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json` and look at `env.ANTHROPIC_BASE_URL` (lowercased).
+2. Match it against this table and set `display.externalUsagePath` in `~/.claude/plugins/claude-hud/config.json` to the **absolute** path of the matching snapshot (resolve `~` to the real home directory). Merge into the `display` object; don't overwrite other keys.
+
+| base URL contains | externalUsagePath |
+|---|---|
+| `bigmodel` | `~/.claude/glm-usage-snapshot.json` |
+| `minimax` | `~/.claude/minimax-usage-snapshot.json` |
+| `aliyun.com` / `alibabacloud` / `bailian` | `~/.claude/alibaba-usage-snapshot.json` |
+| `kimi` / `moonshot` | `~/.claude/kimi-usage-snapshot.json` |
+
+3. If nothing matches (direct Anthropic, Bedrock, Vertex, etc.), skip this step — leave `externalUsagePath` as-is.
+
+Tell the user which provider was detected (if any) and that the matching poller auto-starts via the `SessionStart` hook on the next Claude Code session, so the Usage row appears once the snapshot is fresh.
+
+---
+
 ## Step 4: Optional Features
 
 After the statusLine is applied, ask the user if they'd like to enable additional HUD features beyond the default 2-line display.
