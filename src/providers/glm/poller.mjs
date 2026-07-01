@@ -6,10 +6,6 @@
  * ({ updated_at, five_hour: { used_percentage, resets_at } }) so claude-hud's
  * statusline can render a real usage bar + reset countdown.
  *
- * Isolation boundary: this is a SEPARATE process from claude-hud's statusline.
- * It must NEVER import anything from claude-hud/src, ../glm-key-monitor, or any
- * external repo. Runtime uses only Node 18+ built-ins (fs/os/path/process) plus
- * the global fetch. Zero npm dependencies, zero compilation.
  */
 
 import fs, { promises as fsp } from 'node:fs';
@@ -18,6 +14,7 @@ import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { fetchWithTimeout } from '../shared/proxy-fetch.mjs';
 
 // import.meta.dirname only exists on Node 20.11+; derive it portably so the
 // poller works on Node 18+ (the documented minimum runtime).
@@ -28,23 +25,6 @@ const ENDPOINT = 'https://open.bigmodel.cn/api/monitor/usage/quota/limit';
 const PID_FILE = join(homedir(), '.claude', 'glm-poller.pid');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const FETCH_TIMEOUT_MS = 15000;
-
-/**
- * fetch with an AbortController timeout so a hung TCP connection (connect-then
- * -stall) cannot freeze the poll loop indefinitely. The resulting AbortError is
- * thrown and caught by poll()'s try/catch, preserving the old snapshot.
- */
-async function fetchWithTimeout(url, opts, ms = FETCH_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...opts, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 const nonEmpty = (s) => (typeof s === 'string' && s.trim().length > 0 ? s.trim() : undefined);
 

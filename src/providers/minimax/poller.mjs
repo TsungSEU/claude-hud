@@ -20,6 +20,7 @@ import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { fetchWithTimeout } from '../shared/proxy-fetch.mjs';
 
 // import.meta.dirname only exists on Node 20.11+; derive it portably.
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,18 +33,6 @@ const ENDPOINTS = {
 const PID_FILE = join(homedir(), '.claude', 'minimax-poller.pid');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const FETCH_TIMEOUT_MS = 15000;
-
-async function fetchWithTimeout(url, opts, ms = FETCH_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...opts, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 const nonEmpty = (s) => (typeof s === 'string' && s.trim().length > 0 ? s.trim() : undefined);
 
