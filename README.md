@@ -462,73 +462,7 @@ This fork ships a `SessionStart` hook (see `plugin.json`) that runs `src/provide
 
 Result: after `/plugin install`, the next Claude Code session auto-starts the poller, which then runs in the background (and survives the session ending). No systemd / launchd / NSSM setup needed.
 
-Caveat: a detached process does **not** survive a machine reboot — it relaunches on the next Claude Code session. For true 7×24 uptime (e.g. a server), still use the service setups below; the hook and the service coexist (the PID check prevents duplicate instances).
-
-### Run as a system service (boot start + crash auto-restart)
-
-The loop mode is a daemon and must be re-launched after a reboot. Replace `NODE` (e.g. `/usr/bin/node`, `/opt/homebrew/bin/node`) and `POLLER` (absolute path to `src/providers/glm/poller.mjs`) for your install.
-
-**Linux (systemd user unit)** — `~/.config/systemd/user/glm-poller.service`:
-
-```ini
-[Unit]
-Description=GLM quota -> claude-hud bridge poller
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=NODE POLLER
-Restart=always
-RestartSec=10
-StartLimitIntervalSec=60
-StartLimitBurst=5
-
-[Install]
-WantedBy=default.target
-```
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now glm-poller
-loginctl enable-linger $USER        # keep running after logout
-```
-
-`Restart=always` restarts on any exit (crash/kill); `StartLimitBurst` caps attempts to avoid loops.
-
-**macOS (launchd)** — `~/Library/LaunchAgents/com.glm.poller.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>com.glm.poller</string>
-  <key>ProgramArguments</key>
-  <array><string>NODE</string><string>POLLER</string></array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>StandardErrorPath</key><string>/tmp/glm-poller.err.log</string>
-</dict>
-</plist>
-```
-
-```bash
-launchctl load ~/Library/LaunchAgents/com.glm.poller.plist
-```
-
-`KeepAlive=true` relaunches on crash.
-
-**Windows** — [NSSM](https://nssm.cc/) (service + auto-restart):
-
-```cmd
-nssm install glm-poller "C:\Program Files\nodejs\node.exe" "C:\path\to\glm\poller.mjs"
-nssm set glm-poller AppStdout "C:\Users\YOU\glm-poller.log"
-nssm set glm-poller AppStderr "C:\Users\YOU\glm-poller.log"
-nssm start glm-poller
-```
-
-Or Task Scheduler: trigger = at logon, action = start `node POLLER`, settings = restart on failure.
+Caveat: a detached process does **not** survive a machine reboot — it relaunches on the next Claude Code session. That is the intended model: open Claude Code and the poller comes back on its own, with no per-platform service setup required.
 
 ### Troubleshooting
 

@@ -439,73 +439,7 @@ Usage ██░░░░░░░░ 25% (1h 30m / 5h)
 
 效果：`/plugin install` 之后，下次开 Claude Code 会话会自动起 poller，随后在后台常驻（会话退出也继续运行）。无需 systemd / launchd / NSSM。
 
-注意：detached 进程**不跨系统重启**——重启后会在下次开 Claude Code 会话时重新拉起。若要真正的 7×24 常驻（如服务器），仍使用下面的服务方案；两者可共存（PID 检测防止重复实例）。
-
-### 作为系统服务常驻（开机自启 + 崩溃自动重启）
-
-loop 模式是常驻进程，重启电脑后需重新拉起。下面按平台给出**开机自启 + 异常自动重启**方案。请把 `NODE`（如 `/usr/bin/node`、`/opt/homebrew/bin/node`）和 `POLLER`（`src/providers/glm/poller.mjs` 的绝对路径）换成你的实际值。
-
-**Linux（systemd user 服务）** — `~/.config/systemd/user/glm-poller.service`：
-
-```ini
-[Unit]
-Description=GLM quota -> claude-hud bridge poller
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=NODE POLLER
-Restart=always
-RestartSec=10
-StartLimitIntervalSec=60
-StartLimitBurst=5
-
-[Install]
-WantedBy=default.target
-```
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now glm-poller
-loginctl enable-linger $USER        # 注销 / 未登录也常驻
-```
-
-`Restart=always` 让进程任何原因退出（崩溃/被杀）都 10 秒后重启；`StartLimitBurst` 限制 60 秒内重启次数，避免崩溃死循环。
-
-**macOS（launchd）** — `~/Library/LaunchAgents/com.glm.poller.plist`：
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>com.glm.poller</string>
-  <key>ProgramArguments</key>
-  <array><string>NODE</string><string>POLLER</string></array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>StandardErrorPath</key><string>/tmp/glm-poller.err.log</string>
-</dict>
-</plist>
-```
-
-```bash
-launchctl load ~/Library/LaunchAgents/com.glm.poller.plist
-```
-
-`KeepAlive=true` 在崩溃后自动拉起。
-
-**Windows** — [NSSM](https://nssm.cc/)（服务化 + 自动重启）：
-
-```cmd
-nssm install glm-poller "C:\Program Files\nodejs\node.exe" "C:\path\to\glm\poller.mjs"
-nssm set glm-poller AppStdout "C:\Users\YOU\glm-poller.log"
-nssm set glm-poller AppStderr "C:\Users\YOU\glm-poller.log"
-nssm start glm-poller
-```
-
-或用任务计划程序：触发器「登录时」→ 操作启动 `node POLLER` → 设置「失败时重启」。
+注意：detached 进程**不跨系统重启**——重启后会在下次开 Claude Code 会话时重新拉起。这就是设计模式：只要打开 Claude Code，poller 会自动回来，无需按平台配置系统服务。
 
 ### 故障排查
 
